@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board">
+	<select id="login" parameterType="com.giant.project.model.Member" resultType="com.giant.project.model.Member" >
+		SELECT * FROM MEMBER WHERE mem_id = #{mem_id} and mem_pw = #{mem_pw}
+	</select>
+	<select id="writeViewSelect"  resultType="int">
+		select nvl(max(post_no),0)+1 from board
+	
+	
+	</select>
+	<select id="temporarily" parameterType="com.giant.project.model.Board" >
+		insert into board 
+			(
+			  post_no
+			, mem_id
+			, subject
+			, content
+			, reg_date
+			, status
+			)
+			 values 
+			 (
+			  (select nvl(max(post_no),0)+1 from board)
+			, #{mem_id}
+			, #{subject}
+			, #{content}
+			, sysdate
+			, #{status}
+			
+			<!-- <choose>
+		     		<when test="status == 1 ">
+		     		1
+		     		</when>
+		     		<when test="status == 2 ">
+		     		2
+		     		</when>
+		     		<otherwise>
+		     		</otherwise>
+		     </choose> -->
+
+			)
+	</select>
+		<insert id="post_detailinsert" parameterType="com.giant.project.model.Board"  >
+		insert into detail 
+			(
+			   post_no
+			 , d_post_no
+			 , d_job
+			 , d_status
+			 , d_upt_date
+			 , d_upt_id
+			 )
+				values
+			(	(select nvl(max(post_no)-1,0)+1 from board)
+			, ( select nvl(max(post_no),0)+1 from detail where post_no = (select nvl(max(post_no),0)+1 from board))
+			,   #{d_job}
+			,   #{status}
+			,   sysdate
+			,   #{mem_id}
+			)
+			
+			
+	</insert>
+	<select id="getSearchDate" parameterType="com.giant.project.model.Board" resultType="com.giant.project.model.Board">
+		select 
+			  b.post_no  post_no
+			, b.mem_id   mem_id
+			, b.subject  subject
+			, b.content  content
+			, b.reg_date reg_date
+			, b.upt_id   upt_id
+      		, m.MEM_NAME upt_NAME
+			, b.upt_date upt_date
+			, b.status   status
+			from board b LEFT JOIN member m
+      		on b.upt_id = m.mem_id
+      		where 1 = 1 
+      		<choose>
+		     		<when test="status == 1 ">
+		     		and b.status = #{status}
+		     		or b.status = 2
+		     		or b.status = 5
+		     		</when>
+		     		<when test="status == 3 ">
+		     		and b.status = 2
+		     		or b.status = #{status}
+		     		</when>
+		     		<when test="status == 4 ">
+		     		and b.status = #{status}
+		     		or b.status = 3
+		     		</when>
+		     		<otherwise>
+		     		</otherwise>
+		     </choose>
+		     ORDER BY post_no DESC
+	</select>
+	<select id="selectjob" parameterType="com.giant.project.model.Board" resultType="integer" >
+		select mem_job from member where mem_id = #{mem_id}
+	</select>
+	
+	<select id="postBoard" parameterType="integer" resultType="com.giant.project.model.Board" >
+		select * from board where post_no = #{post_no}
+	</select>
+	<select id="postDetail" parameterType="com.giant.project.model.Detail" resultType="com.giant.project.model.Detail">
+		select * from detail where post_no = #{post_no}
+	
+	</select>
+	
+	<update id="post_noUpdate" parameterType="com.giant.project.model.Board"  >
+		update board 
+			set
+			status = #{status}
+			where post_no = #{post_no}
+	</update>
+	
+	<!-- 결제 반려 -->
+	<update id="post_noGiveback" parameterType="com.giant.project.model.Board" > 
+		update board 
+			set
+			status = 5
+			where post_no = #{post_no}
+	
+	</update>
+	
+	<select id="list" resultType="com.giant.project.model.Board">
+		select
+			*
+			from board
+	</select>
+	
+	<select id="miSelectList" resultType="map" parameterType="map">
+		select
+			*
+			from board 
+		where 1 = 1 
+		 <if test="search_type != null ||  search_type != ''"> 
+			<choose>
+				<when test="search_type == 'all' ">
+					and SUBJECT like '%'||#{search_text}||'%'
+					or CONTENT like '%'||#{search_text}||'%'
+					or MEM_ID like '%'||#{search_text}||'%'
+				</when>	
+				<when test="search_type == 'subject' ">
+					and SUBJECT like '%'||#{search_text}||'%'
+				</when>	
+				<when test="search_type == 'subject_content' ">
+					and SUBJECT like '%'||#{search_text}||'%'
+					or CONTENT like '%'||#{search_text}||'%'
+				</when>	
+				<when test="search_type == 'name' ">
+					and MEM_ID like '%'||#{search_text}||'%'
+				</when>	
+				<otherwise>
+				</otherwise>
+			</choose>
+		 </if> 
+		ORDER BY post_no DESC
+	</select>
+</mapper>
